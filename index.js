@@ -16,7 +16,9 @@ app.use(cookieParser());
 
 
 const authRoute = require('./routes/authRoute.js');
-app.use("/auth", authRoute)
+app.use("/auth", authRoute);
+const otpRoute = require('./routes/otpRoute.js');
+app.use('/otp' , otpRoute )
 
 
 
