@@ -66,7 +66,7 @@ exports.sendOtp = async (req, res) => {
         // only need for dev log
         console.log("Message sent: %s", info.messageId);
         console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
-        
+
         return res.json({
             success: true,
             message: "OTP sent"
@@ -81,40 +81,49 @@ exports.sendOtp = async (req, res) => {
 };
 
 exports.verifyOtp = async (req, res) => {
-  try {
-    const { email, otp, purpose = 'auth' } = req.body;
-    if (!email || !otp) return res.status(400).json({ success:false, message:'Email and OTP required' });
+    try {
+        const { email, otp, purpose = 'auth' } = req.body;
+        if (!email || !otp) return res.status(400).json({
+            success: false,
+            message: 'Email and OTP required'
+        });
 
-    // find non-expired OTP docs for this email & purpose (most recent first)
-    const otpDoc = await Otp.findOne({ email, purpose }).sort({ createdAt: -1 });
-    if (!otpDoc) return res.status(400).json({ success:false, message:'No OTP found or expired' });
+        // find non-expired OTP docs for this email & purpose (most recent first)
+        const otpDoc = await Otp.findOne({ email, purpose }).sort({ createdAt: -1 });
+        if (!otpDoc) return res.status(400).json({
+            success: false,
+            message: 'No OTP found or expired'
+        });
 
-    if (otpDoc.expiresAt < new Date()) {
-      // doc will auto-delete by TTL index shortly but handle explicitly
-      await otpDoc.deleteOne();
-      return res.status(400).json({ success:false, message:'OTP expired' });
+        if (otpDoc.expiresAt < new Date()) {
+            // doc will auto-delete by TTL index shortly but handle explicitly
+            await otpDoc.deleteOne();
+            return res.status(400).json({
+                success: false,
+                message: 'OTP expired'
+            });
+        }
+
+        // rate limit attempts for this OTP
+        if (otpDoc.attempts >= 5) {
+            await otpDoc.deleteOne();
+            return res.status(429).json({ success: false, message: 'Too many attempts' });
+        }
+
+        const match = await bcrypt.compare(otp, otpDoc.otpHash);
+        if (!match) {
+            otpDoc.attempts += 1;
+            await otpDoc.save();
+            return res.status(401).json({ success: false, message: 'Invalid OTP' });
+        }
+
+        // success: remove OTP record and proceed with desired action
+        await otpDoc.deleteOne();
+
+        // e.g., mark user verified, issue token, etc.
+        return res.json({ success: true, message: 'OTP verified' });
+    } catch (err) {
+        console.error('verifyOtp err', err);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
     }
-
-    // rate limit attempts for this OTP
-    if (otpDoc.attempts >= 5) {
-      await otpDoc.deleteOne();
-      return res.status(429).json({ success:false, message:'Too many attempts' });
-    }
-
-    const match = await bcrypt.compare(otp, otpDoc.otpHash);
-    if (!match) {
-      otpDoc.attempts += 1;
-      await otpDoc.save();
-      return res.status(401).json({ success:false, message:'Invalid OTP' });
-    }
-
-    // success: remove OTP record and proceed with desired action
-    await otpDoc.deleteOne();
-
-    // e.g., mark user verified, issue token, etc.
-    return res.json({ success:true, message:'OTP verified' });
-  } catch (err) {
-    console.error('verifyOtp err', err);
-    return res.status(500).json({ success:false, message:'Internal server error' });
-  }
 };

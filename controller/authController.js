@@ -32,8 +32,8 @@ exports.registerController = async (req, res) => {
                 message: 'User already exist'
             })
         }
-        console.log(process.env.SALT);
-        
+        // console.log(process.env.SALT);
+
         const hashedPassword = await bcrypt.hash(password, 10);
         // console.log("hash password :  ", hashedPassword);
 
@@ -60,13 +60,60 @@ exports.registerController = async (req, res) => {
         });
     } catch (error) {
         if (error.code === 11000) {
-            return res.status(409).json({ success: false, message: 'Email already registered' });
+            return res.status(409).json({
+                success: false,
+                message: 'Email already registered'
+            });
         }
         console.error('Register error:', error);
-        return res.status(500).json({ success: false, message: 'Internal server error' });
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
     }
 }
 
 exports.loginController = async (req, res) => {
-    console.log('login')
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            console.log("email or passwor are missing while login");
+            return res.json({
+                sucess: false,
+                message: "Missing login details"
+            })
+        }
+        const user = await userModel.findOne({ email });
+        if (!user) {
+            console.log("Email is not registered");
+            res.status(404).json({
+                sucess: false,
+                message: "Incorect Email and Password"
+            })
+        }
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            console.log("Incorrect password");
+            return res.status(401).json({
+                sucess: false,
+                message: "Incorect Email and Password"
+            })
+        }
+        return res.status(200).json({
+            sucess: true,
+            message: "Login successful",
+            user: {
+                name: user.name,
+                email: user.email,
+            }
+        })
+
+    } catch (error) {
+        console.error("Login error:", error);
+        const errMsg = error instanceof ReferenceError ? 'Server code error' : 'Internal server error';
+        res.status(500).json({
+            success: false,
+            message: errMsg
+        });
+    }
 }
