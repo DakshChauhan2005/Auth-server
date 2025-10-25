@@ -1,6 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { registerController, loginController } = require('../controller/authController');
+const { registerController, loginController, userController, logoutController } = require('../controller/authController');
+const { requireAuth } = require('../middleware/auth');
 const router = express.Router();
 
 router.post('/register', [
@@ -10,5 +11,7 @@ router.post('/register', [
     body('password').isLength({ min: 6 }).withMessage('Password min length 6'),
 ], registerController);
 router.post('/login', loginController)
+router.get('/me', requireAuth , userController)
+router.get('/logout' , logoutController)
 
 module.exports = router;

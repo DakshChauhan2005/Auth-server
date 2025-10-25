@@ -3,7 +3,12 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 const cors = require("cors");
-app.use(cors({ credentials: true }));
+app.use(
+    cors({
+        origin: "http://localhost:5173", // your frontend URL
+        credentials: true,               // 👈 allow cookies
+    })
+);
 const dotenv = require("dotenv")
 dotenv.config();
 
@@ -18,7 +23,7 @@ app.use(cookieParser());
 const authRoute = require('./routes/authRoute.js');
 app.use("/auth", authRoute);
 const otpRoute = require('./routes/otpRoute.js');
-app.use('/otp' , otpRoute )
+app.use('/otp', otpRoute)
 
 
 

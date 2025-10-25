@@ -2,6 +2,8 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const Otp = require('../models/otpModel');
 const nodemailer = require('nodemailer');
+const { log } = require('console');
+const userModel = require('../models/userModel')
 
 const SALT_ROUNDS = Number(process.env.OTP_SALT_ROUNDS || 10);
 // const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 5);
@@ -32,11 +34,25 @@ function generateNumericOtp(length = 6) {
 
 exports.sendOtp = async (req, res) => {
     try {
-        const { email, purpose = 'auth' } = req.body;
+        const { name, email, mobile, password, purpose = 'auth' } = req.body;
+        if (!name || !email || !mobile || !password) {
+            return res.status(422).json({
+                success: false,
+                message: 'Missing details'
+            })
+        }
         if (!email) {
             res.status(400).json({
                 success: false,
                 message: "Email required"
+            })
+        }
+        // checking if this email is new or not
+        const existingUser = await userModel.findOne({ email });
+        if (existingUser) {
+            return res.status(409).json({
+                success: false,
+                message: 'User already exist'
             })
         }
         // chatGpt later (Rate limiter)
@@ -83,6 +99,8 @@ exports.sendOtp = async (req, res) => {
 exports.verifyOtp = async (req, res) => {
     try {
         const { email, otp, purpose = 'auth' } = req.body;
+        console.log(req.body);
+
         if (!email || !otp) return res.status(400).json({
             success: false,
             message: 'Email and OTP required'
@@ -121,6 +139,7 @@ exports.verifyOtp = async (req, res) => {
         await otpDoc.deleteOne();
 
         // e.g., mark user verified, issue token, etc.
+        console.log("verified");
         return res.json({ success: true, message: 'OTP verified' });
     } catch (err) {
         console.error('verifyOtp err', err);
