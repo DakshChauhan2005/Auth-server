@@ -5,8 +5,8 @@ const port = process.env.PORT || 4000;
 const cors = require("cors");
 app.use(
     cors({
-        origin: "http://localhost:5173", // your frontend URL
-        credentials: true,               // 👈 allow cookies
+        origin: "https://auth-client-mkeq.onrender.com",
+        credentials: true, 
     })
 );
 const dotenv = require("dotenv")
